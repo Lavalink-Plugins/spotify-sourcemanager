@@ -22,8 +22,10 @@ dependencies {
 	compileOnly("com.github.topi314.lavasearch:lavasearch:1.0.0")
 	implementation("com.github.topi314.lavasearch:lavasearch-plugin-api:1.0.0")
 	implementation("com.github.topi314.lavalyrics:lavalyrics-plugin-api:1.0.0")
+    implementation("me.xdrop:fuzzywuzzy:1.4.0")
 
-	// Copy lyrics.kt from main
+
+    // Copy lyrics.kt from main
 	project.project(":main").configurations["implementation"].dependencies.forEach {
 		if (it.group == "dev.schlaubi.lyrics") {
 			add("implementation", it)

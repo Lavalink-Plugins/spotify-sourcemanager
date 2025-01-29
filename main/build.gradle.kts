@@ -26,6 +26,8 @@ dependencies {
     implementation("com.auth0:java-jwt:4.4.0")
     compileOnly("org.slf4j:slf4j-api:2.0.7")
 
+    implementation("me.xdrop:fuzzywuzzy:1.4.0")
+
     lyricsDependency("protocol")
     lyricsDependency("client")
 }

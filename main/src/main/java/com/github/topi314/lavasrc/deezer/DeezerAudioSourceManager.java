@@ -8,6 +8,7 @@ import com.github.topi314.lavasearch.result.AudioSearchResult;
 import com.github.topi314.lavasearch.result.BasicAudioSearchResult;
 import com.github.topi314.lavasrc.ExtendedAudioSourceManager;
 import com.github.topi314.lavasrc.LavaSrcTools;
+import com.github.topi314.lavasrc.proxy.ProxyManager;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.tools.JsonBrowser;
@@ -25,6 +26,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.github.topi314.lavasrc.proxy.ProxyConfig;
 
 import java.io.DataInput;
 import java.io.IOException;
@@ -41,6 +43,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 
 public class DeezerAudioSourceManager extends ExtendedAudioSourceManager implements HttpConfigurable, AudioSearchManager, AudioLyricsManager {
 
@@ -60,18 +63,20 @@ public class DeezerAudioSourceManager extends ExtendedAudioSourceManager impleme
 	private final String masterDecryptionKey;
 	private String arl;
 	private DeezerAudioTrack.TrackFormat[] formats;
-	private final HttpInterfaceManager httpInterfaceManager;
 	private Tokens tokens;
+	private final ProxyManager proxyManager;
+	private final HttpInterfaceManager httpInterfaceManager;
+
 
 	public DeezerAudioSourceManager(String masterDecryptionKey) {
 		this(masterDecryptionKey, null);
 	}
 
 	public DeezerAudioSourceManager(String masterDecryptionKey, @Nullable String arl) {
-		this(masterDecryptionKey, arl, null);
+		this(masterDecryptionKey, arl, null, null);
 	}
 
-	public DeezerAudioSourceManager(String masterDecryptionKey, @Nullable String arl, @Nullable DeezerAudioTrack.TrackFormat[] formats) {
+	public DeezerAudioSourceManager(String masterDecryptionKey, @Nullable String arl, @Nullable DeezerAudioTrack.TrackFormat[] formats, ProxyManager proxyManager) {
 		if (masterDecryptionKey == null || masterDecryptionKey.isEmpty()) {
 			throw new IllegalArgumentException("Deezer master key must be set");
 		}
@@ -79,7 +84,9 @@ public class DeezerAudioSourceManager extends ExtendedAudioSourceManager impleme
 		this.masterDecryptionKey = masterDecryptionKey;
 		this.arl = arl != null && arl.isEmpty() ? null : arl;
 		this.formats = formats != null && formats.length > 0 ? formats : DeezerAudioTrack.TrackFormat.DEFAULT_FORMATS;
-		this.httpInterfaceManager = HttpClientTools.createCookielessThreadLocalManager();
+		this.proxyManager = proxyManager;
+		this.httpInterfaceManager = this.proxyManager != null ? this.proxyManager.getNextHttpInterfaceManager() : HttpClientTools.createCookielessThreadLocalManager();
+
 	}
 
 	public void setFormats(DeezerAudioTrack.TrackFormat[] formats) {
@@ -175,6 +182,7 @@ public class DeezerAudioSourceManager extends ExtendedAudioSourceManager impleme
 			if (item == AudioReference.NO_TRACK) {
 				return null;
 			}
+
 			if (item instanceof AudioTrack) {
 				deezerTackId = ((AudioTrack) item).getIdentifier();
 			} else if (item instanceof AudioPlaylist) {
@@ -250,7 +258,7 @@ public class DeezerAudioSourceManager extends ExtendedAudioSourceManager impleme
 			if (identifier.startsWith(SHARE_URL)) {
 				var request = new HttpGet(identifier);
 				request.setConfig(RequestConfig.custom().setRedirectsEnabled(false).build());
-				try (var response = this.httpInterfaceManager.getInterface().execute(request)) {
+				try (var response = getHttpInterface().execute(request)) {
 					if (response.getStatusLine().getStatusCode() == 302) {
 						var location = response.getFirstHeader("Location").getValue();
 						if (location.startsWith("https://www.deezer.com/")) {
@@ -290,7 +298,7 @@ public class DeezerAudioSourceManager extends ExtendedAudioSourceManager impleme
 	public JsonBrowser getJson(String uri) throws IOException {
 		var request = new HttpGet(uri);
 		request.setHeader("Accept", "application/json");
-		return LavaSrcTools.fetchResponseAsJson(this.httpInterfaceManager.getInterface(), request);
+		return LavaSrcTools.fetchResponseAsJson(this.getHttpInterface(), request);
 	}
 
 	private List<AudioTrack> parseTracks(JsonBrowser json, boolean preview) {
@@ -538,7 +546,7 @@ public class DeezerAudioSourceManager extends ExtendedAudioSourceManager impleme
 	@Override
 	public void shutdown() {
 		try {
-			this.httpInterfaceManager.close();
+			this.proxyManager.close();
 		} catch (IOException e) {
 			log.error("Failed to close HTTP interface manager", e);
 		}
@@ -546,12 +554,12 @@ public class DeezerAudioSourceManager extends ExtendedAudioSourceManager impleme
 
 	@Override
 	public void configureRequests(Function<RequestConfig, RequestConfig> configurator) {
-		this.httpInterfaceManager.configureRequests(configurator);
+		this.proxyManager.configureRequests(configurator);
 	}
 
 	@Override
 	public void configureBuilder(Consumer<HttpClientBuilder> configurator) {
-		this.httpInterfaceManager.configureBuilder(configurator);
+		this.proxyManager.configureBuilder(configurator);
 	}
 
 	public String getMasterDecryptionKey() {
@@ -568,7 +576,10 @@ public class DeezerAudioSourceManager extends ExtendedAudioSourceManager impleme
 	}
 
 	public HttpInterface getHttpInterface() {
-		return this.httpInterfaceManager.getInterface();
+		if(this.proxyManager == null) {
+			return this.httpInterfaceManager.getInterface();
+		}
+		return this.proxyManager.getInterface();
 	}
 
 	public static class Tokens {

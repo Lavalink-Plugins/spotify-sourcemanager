@@ -15,6 +15,9 @@ public class SourcesConfig {
 	private boolean floweryTTS = false;
 	private boolean youtube = false;
 	private boolean vkMusic = false;
+	private boolean jiosaavn = false;
+	private boolean tidal = false;
+
 
 	public boolean isSpotify() {
 		return this.spotify;
@@ -70,5 +73,21 @@ public class SourcesConfig {
 
 	public void setVkMusic(boolean vkMusic) {
 		this.vkMusic = vkMusic;
+	}
+
+	public boolean isJiosaavn() {
+		return this.jiosaavn;
+	}
+
+	public void setJiosaavn(boolean jiosaavn) {
+		this.jiosaavn = jiosaavn;
+	}
+
+	public boolean isTidal() {
+		return tidal;
+	}
+
+	public void setTidal(boolean tidal) {
+		this.tidal = tidal;
 	}
 }

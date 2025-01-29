@@ -25,7 +25,7 @@ public abstract class MirroringAudioTrack extends ExtendedAudioTrack {
 		this.sourceManager = sourceManager;
 	}
 
-	abstract protected InternalAudioTrack createAudioTrack(AudioTrackInfo trackInfo, SeekableInputStream inputStream);
+	protected abstract InternalAudioTrack createAudioTrack(AudioTrackInfo trackInfo, SeekableInputStream inputStream);
 
 	@Override
 	public void process(LocalAudioTrackExecutor executor) throws Exception {

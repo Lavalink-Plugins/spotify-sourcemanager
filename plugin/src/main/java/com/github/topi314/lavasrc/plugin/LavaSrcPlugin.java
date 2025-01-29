@@ -8,10 +8,16 @@ import com.github.topi314.lavasrc.applemusic.AppleMusicSourceManager;
 import com.github.topi314.lavasrc.deezer.DeezerAudioSourceManager;
 import com.github.topi314.lavasrc.deezer.DeezerAudioTrack;
 import com.github.topi314.lavasrc.flowerytts.FloweryTTSSourceManager;
+import com.github.topi314.lavasrc.mirror.MirroringAudioTrackResolver;
+import com.github.topi314.lavasrc.mirror.StringCompareMirroringAudioTrackResolver;
 import com.github.topi314.lavasrc.mirror.DefaultMirroringAudioTrackResolver;
 import com.github.topi314.lavasrc.plugin.config.*;
 import com.github.topi314.lavasrc.protocol.Config;
+import com.github.topi314.lavasrc.jiosaavn.JioSaavnAudioSourceManager;
+import com.github.topi314.lavasrc.proxy.ProxyConfig;
+import com.github.topi314.lavasrc.proxy.ProxyManager;
 import com.github.topi314.lavasrc.spotify.SpotifySourceManager;
+import com.github.topi314.lavasrc.tidal.TidalSourceManager;
 import com.github.topi314.lavasrc.vkmusic.VkMusicSourceManager;
 import com.github.topi314.lavasrc.yandexmusic.YandexMusicSourceManager;
 import com.github.topi314.lavasrc.youtube.YoutubeSearchManager;
@@ -24,6 +30,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Arrays;
+
 @Service
 @RestController
 public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchManagerConfiguration, LyricsManagerConfiguration {
@@ -32,6 +40,7 @@ public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchMan
 
 	private final SourcesConfig sourcesConfig;
 	private final LyricsSourcesConfig lyricsSourcesConfig;
+	private final AdvancedMirrorConfig advancedMirrorConfig;
 	private AudioPlayerManager manager;
 	private SpotifySourceManager spotify;
 	private AppleMusicSourceManager appleMusic;
@@ -40,14 +49,50 @@ public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchMan
 	private FloweryTTSSourceManager flowerytts;
 	private YoutubeSearchManager youtube;
 	private VkMusicSourceManager vkMusic;
+	private JioSaavnAudioSourceManager jioSaavn;
+	private TidalSourceManager tidal;
 
-	public LavaSrcPlugin(LavaSrcConfig pluginConfig, SourcesConfig sourcesConfig, LyricsSourcesConfig lyricsSourcesConfig, SpotifyConfig spotifyConfig, AppleMusicConfig appleMusicConfig, DeezerConfig deezerConfig, YandexMusicConfig yandexMusicConfig, FloweryTTSConfig floweryTTSConfig, YouTubeConfig youTubeConfig, VkMusicConfig vkMusicConfig) {
+	public LavaSrcPlugin(
+		LavaSrcConfig pluginConfig,
+		SourcesConfig sourcesConfig,
+		LyricsSourcesConfig lyricsSourcesConfig,
+		AdvancedMirrorConfig advancedMirrorConfig,
+		SpotifyConfig spotifyConfig,
+		AppleMusicConfig appleMusicConfig,
+		DeezerConfig deezerConfig,
+		YandexMusicConfig yandexMusicConfig,
+		FloweryTTSConfig floweryTTSConfig,
+		YouTubeConfig youTubeConfig,
+		VkMusicConfig vkMusicConfig,
+		JioSaavnConfig jioSaavnConfig,
+		TidalConfig tidalConfig) {
+
 		log.info("Loading LavaSrc plugin...");
 		this.sourcesConfig = sourcesConfig;
 		this.lyricsSourcesConfig = lyricsSourcesConfig;
+		this.advancedMirrorConfig = advancedMirrorConfig;
+
+		MirroringAudioTrackResolver defaultresolver = new DefaultMirroringAudioTrackResolver(pluginConfig.getProviders());
+		if (this.advancedMirrorConfig != null && this.advancedMirrorConfig.getSources() != null && this.advancedMirrorConfig.getSources().length > 0) {
+			defaultresolver = new StringCompareMirroringAudioTrackResolver(
+				this.advancedMirrorConfig.getSources(),
+				pluginConfig.getProviders(),
+				this.advancedMirrorConfig.getTitleThreshold(),
+				this.advancedMirrorConfig.getAuthorThreshold(),
+				this.advancedMirrorConfig.getTotalMatchThreshold(),
+				this.advancedMirrorConfig.isSkipSoundCloudGo(),
+				this.advancedMirrorConfig.getLevelOnePenalty(),
+				this.advancedMirrorConfig.getLevelTwoPenalty(),
+				this.advancedMirrorConfig.getLevelThreePenalty()
+			);
+
+			log.info("Advanced Mirroring resolver enabled for sources: " + Arrays.toString(this.advancedMirrorConfig.getSources()));
+		}
+
 
 		if (sourcesConfig.isSpotify() || lyricsSourcesConfig.isSpotify()) {
-			this.spotify = new SpotifySourceManager(spotifyConfig.getClientId(), spotifyConfig.getClientSecret(), spotifyConfig.getSpDc(), spotifyConfig.getCountryCode(), unused -> manager, new DefaultMirroringAudioTrackResolver(pluginConfig.getProviders()));
+			this.spotify = new SpotifySourceManager(spotifyConfig.getClientId(), spotifyConfig.getClientSecret(), spotifyConfig.getSpDc(),
+				spotifyConfig.getCountryCode(), unused -> manager, defaultresolver);
 			if (spotifyConfig.getPlaylistLoadLimit() > 0) {
 				this.spotify.setPlaylistPageLimit(spotifyConfig.getPlaylistLoadLimit());
 			}
@@ -62,7 +107,7 @@ public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchMan
 			}
 		}
 		if (sourcesConfig.isAppleMusic()) {
-			this.appleMusic = new AppleMusicSourceManager(pluginConfig.getProviders(), appleMusicConfig.getMediaAPIToken(), appleMusicConfig.getCountryCode(), unused -> manager);
+			this.appleMusic = new AppleMusicSourceManager(appleMusicConfig.getMediaAPIToken(), appleMusicConfig.getCountryCode(), unused -> manager, defaultresolver);
 			if (appleMusicConfig.getPlaylistLoadLimit() > 0) {
 				appleMusic.setPlaylistPageLimit(appleMusicConfig.getPlaylistLoadLimit());
 			}
@@ -70,9 +115,13 @@ public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchMan
 				appleMusic.setAlbumPageLimit(appleMusicConfig.getAlbumLoadLimit());
 			}
 		}
-		if (sourcesConfig.isDeezer() || lyricsSourcesConfig.isDeezer()) {
-			this.deezer = new DeezerAudioSourceManager(deezerConfig.getMasterDecryptionKey(), deezerConfig.getArl(), deezerConfig.getFormats());
+
+		if (sourcesConfig.isDeezer()) {
+			ProxyConfig[] proxies = deezerConfig.getProxies();
+			ProxyManager proxyManager = (proxies != null && proxies.length > 0) ? new ProxyManager(proxies, deezerConfig.isUseLocalNetwork()) : null;
+			this.deezer = new DeezerAudioSourceManager(deezerConfig.getMasterDecryptionKey(), deezerConfig.getArl(), deezerConfig.getFormats(), proxyManager);
 		}
+
 		if (sourcesConfig.isYandexMusic() || lyricsSourcesConfig.isYandexMusic()) {
 			this.yandexMusic = new YandexMusicSourceManager(yandexMusicConfig.getAccessToken());
 			if (yandexMusicConfig.getPlaylistLoadLimit() > 0) {
@@ -120,6 +169,22 @@ public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchMan
 				vkMusic.setRecommendationsLoadLimit(vkMusicConfig.getRecommendationLoadLimit());
 			}
 		}
+
+		if (sourcesConfig.isJiosaavn()) {
+			if(jioSaavnConfig.getDecryption() == null || jioSaavnConfig.getDecryption().getSecretKey() == null) {
+				log.warn("JioSaavn decryption config is missing, JioSaavn will not work properly");
+			}
+			ProxyConfig[] proxies = jioSaavnConfig.getProxies();
+			ProxyManager proxyManager = (proxies != null && proxies.length > 0) ? new ProxyManager(proxies, jioSaavnConfig.isUseLocalNetwork()) : null;
+			this.jioSaavn = new JioSaavnAudioSourceManager(jioSaavnConfig.getGenericProxy(), proxyManager, jioSaavnConfig.getDecryption());
+		}
+
+		if (sourcesConfig.isTidal()) {
+			this.tidal = new TidalSourceManager(tidalConfig.getCountryCode(), unused -> this.manager, defaultresolver, tidalConfig.getToken());
+			if (tidalConfig.getSearchLimit() > 0) {
+				this.tidal.setSearchLimit(tidalConfig.getSearchLimit());
+			}
+		}
 	}
 
 	private boolean hasNewYoutubeSource() {
@@ -159,6 +224,17 @@ public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchMan
 			log.info("Registering Vk Music audio source manager...");
 			manager.registerSourceManager(this.vkMusic);
 		}
+
+		if (this.jioSaavn != null) {
+			log.info("Registering JioSaavn audio source manager...");
+			manager.registerSourceManager(this.jioSaavn);
+		}
+
+		if (this.tidal != null) {
+			log.info("Registering Tidal audio source manager...");
+			manager.registerSourceManager(this.tidal);
+		}
+
 		return manager;
 	}
 
@@ -189,6 +265,18 @@ public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchMan
 			log.info("Registering VK Music search manager...");
 			manager.registerSearchManager(this.vkMusic);
 		}
+
+
+		if (this.jioSaavn != null && this.sourcesConfig.isJiosaavn()) {
+			log.info("Registering Saavn search manager...");
+			manager.registerSearchManager(this.jioSaavn);
+		}
+
+		if (this.tidal != null && this.sourcesConfig.isTidal()) {
+			log.info("Registering Tidal search manager...");
+			manager.registerSearchManager(this.tidal);
+		}
+
 		return manager;
 	}
 
@@ -215,6 +303,7 @@ public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchMan
 			log.info("Registering VK Music lyrics manager...");
 			manager.registerLyricsManager(this.vkMusic);
 		}
+
 		return manager;
 	}
 

@@ -3,9 +3,16 @@ plugins:
     providers: # Custom providers for track loading. This is the default
 #      - "dzisrc:%ISRC%" # Deezer ISRC provider
 #      - "dzsearch:%QUERY%" # Deezer search provider
+#      - 'jssearch:%QUERY%' # JioSaavn search provider (recommended to use with advanced mirroring & search proxies)
       - "ytsearch:\"%ISRC%\"" # Will be ignored if track does not have an ISRC. See https://en.wikipedia.org/wiki/International_Standard_Recording_Code
       - "ytsearch:%QUERY%" # Will be used if track has no ISRC or no track could be found for the ISRC
-#        you can add multiple other fallback sources here
+    #        you can add multiple other fallback sources here
+    #advancedmirroring: # A custom resolver that will be used for regular QUERY searches, and get you the best results from the sources you provide (Recommended for use with bad search platforms)
+      #sources: # The sources to use for the advanced mirroring
+      #  - jssearch # JioSaavn search source
+      # skipSoundCloudGo: true # Whether to skip the SoundCloud Go tracks (preview tracks) (optional)
+      # You can also set the threshold for the title, author & total match (titleThreshold, authorThreshold (1 - 100), totalMatchThreshold (1 - 300)) (optional)
+      # levelOnePenalty: 1, levelTwoPenalty: 2, levelThreePenalty: 0.8 # Penalties for the first, second, and third levels (optional)
     sources:
       spotify: false # Enable Spotify source
       applemusic: false # Enable Apple Music source
@@ -14,6 +21,8 @@ plugins:
       flowerytts: false # Enable Flowery TTs source
       youtube: false # Enable YouTube search source (https://github.com/topi314/LavaSearch)
       vkmusic: false # Enable Vk Music source
+      jiosaavn: false # Enable JioSaavn source
+      tidal: false # Enable Tidal source
     lyrics-sources:
       spotify: false # Enable Spotify lyrics source
       deezer: false # Enable Deezer lyrics source
@@ -37,6 +46,13 @@ plugins:
       masterDecryptionKey: "your master decryption key" # the master key used for decrypting the deezer tracks. (yes this is not here you need to get it from somewhere else)
       arl: "your deezer arl" # the arl cookie used for accessing the deezer api
       formats: [ "FLAC", "MP3_320", "MP3_256", "MP3_128", "MP3_64", "AAC_64" ] # the formats you want to use for the deezer tracks. "FLAC", "MP3_320", "MP3_256" & "AAC_64" are only available for premium users and require a valid arl
+      useLocalNetwork: true # whether to use the local network for accessing the deezer api or just rely on the proxies
+      proxies:
+        - protocol: "http" # the protocol of the proxy
+          host: "192.0.2.146" # the host of the proxy (ip or domain)
+          port: 8080 # the port of the proxy
+          user: "user" # the user of the proxy (optional)
+          password: "youShallPass" # the password of the proxy (optional)
     yandexmusic:
       accessToken: "your access token" # the token used for accessing the yandex music api. See https://github.com/TopiSenpai/LavaSrc#yandex-music
       playlistLoadLimit: 1 # The number of pages at 100 tracks each
@@ -55,6 +71,24 @@ plugins:
       playlistLoadLimit: 1 # The number of pages at 50 tracks each
       artistLoadLimit: 1 # The number of pages at 10 tracks each
       recommendationsLoadLimit: 10 # Number of tracks
+    tidal:
+      countryCode: "US"
+      searchLimit: 6 # The total number of tracks in the search results.
+#     token: "your tidal token" # optional (in case you want to change the token & use your own)
+    jiosaavn:
+      decryption: # The decryption configuration for the jiosaavn tracks
+        algorithm: "??" # The algorithm used for decryption (Default "DES")
+        transformation: "??/??/??" # The transformation used for decryption (Default "DES/ECB/PKCS5Padding")
+        secretKey: "??" # The secret key used for decryption (Find your own secret key)
+      useLocalNetwork: false # whether to use the local network for accessing the jiosaavn or just rely on the proxies (keep it false if your server is not in India)
+      genericProxy: "https://domain.dev/url?url=%LINK%" # A generic HTTP proxy used for search ONLY. The %LINK% will be replaced with the search URL and its parameters.
+      proxies:
+        - protocol: "http" # the protocol of the proxy (use http or https)
+          host: "192.0.2.146" # the host of the proxy (ip or domain)
+          port: 8080 # the port of the proxy
+          user: "user" # the user of the proxy (optional)
+          password: "youShallPass" # the password of the proxy (optional)
+
 
 server: # REST and WS server
   port: 2333
@@ -115,10 +149,10 @@ lavalink:
 #      email: "" # Email of Google account
 #      password: "" # Password of Google account
 #    httpConfig: # Useful for blocking bad-actors from ip-grabbing your music node and attacking it, this way only the http proxy will be attacked
-#      proxyHost: "localhost" # Hostname of the proxy, (ip or domain)
-#      proxyPort: 3128 # Proxy port, 3128 is the default for squidProxy
-#      proxyUser: "" # Optional user for basic authentication fields, leave blank if you don't use basic auth
-#    proxyPassword: "" # Password for basic authentication
+#      host: "localhost" # Hostname of the proxy, (ip or domain)
+#      port: 3128 # Proxy port, 3128 is the default for squidProxy
+#      user: "" # Optional user for basic authentication fields, leave blank if you don't use basic auth
+#    password: "" # Password for basic authentication
 
 metrics:
   prometheus:
