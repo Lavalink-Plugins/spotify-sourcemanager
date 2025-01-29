@@ -82,6 +82,7 @@ plugins:
       flowerytts: false # Enable Flowery TTS source
       youtube: false # Enable YouTube search source (https://github.com/topi314/LavaSearch)
       vkmusic: false # Enable Vk Music source
+      qobuz : false # Enable Qobuz source
     lyrics-sources:
       spotify: false # Enable Spotify lyrics source
       deezer: false # Enable Deezer lyrics source
@@ -131,6 +132,11 @@ plugins:
       playlistLoadLimit: 1 # The number of pages at 50 tracks each
       artistLoadLimit: 1 # The number of pages at 10 tracks each
       recommendationsLoadLimit: 10 # Number of tracks
+    qobuz: 
+      userOauthToken : "*********************************"
+      #appId : ""  not needed if your userOauthToken is not old (plugin can auto-fetch it)
+      #appSecret : "" not needed if your userOauthToken is not old (plugin can auto-fetch it)
+        
 ```
 
 ### Plugin Info
@@ -739,5 +745,13 @@ You can read about all the available options [here](https://flowery.pw/docs), a 
 * https://vk.com/music/album/-2000228258_15228258
 * https://vk.com/audios700949584?q=phonk%20album&z=audio_playlist-2000933493_13933493%2Fbe3494d46d310b0d0d
 * https://vk.ru/audios700949584?q=phonk%20album&z=audio_playlist-2000933493_13933493
+
+### Qobuz
+* `qbsearch:animals architects`
+* https://open.qobuz.com/track/52151405
+* https://play.qobuz.com/album/c9wsrrjh49ftb
+* https://play.qobuz.com/playlist/24893079
+* https://play.qobuz.com/artist/2070395
+* https://www.qobuz.com/us-en/album/kesariya-pritam-arijit-singh-amitabh-bhattacharya/cxtiqss1up8ub
 
 ---

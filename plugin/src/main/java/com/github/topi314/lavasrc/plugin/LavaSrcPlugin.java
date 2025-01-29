@@ -11,6 +11,7 @@ import com.github.topi314.lavasrc.flowerytts.FloweryTTSSourceManager;
 import com.github.topi314.lavasrc.mirror.DefaultMirroringAudioTrackResolver;
 import com.github.topi314.lavasrc.plugin.config.*;
 import com.github.topi314.lavasrc.protocol.Config;
+import com.github.topi314.lavasrc.qobuz.QobuzAudioSourceManager;
 import com.github.topi314.lavasrc.spotify.SpotifySourceManager;
 import com.github.topi314.lavasrc.vkmusic.VkMusicSourceManager;
 import com.github.topi314.lavasrc.yandexmusic.YandexMusicSourceManager;
@@ -40,8 +41,9 @@ public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchMan
 	private FloweryTTSSourceManager flowerytts;
 	private YoutubeSearchManager youtube;
 	private VkMusicSourceManager vkMusic;
+	private QobuzAudioSourceManager qobuz;
 
-	public LavaSrcPlugin(LavaSrcConfig pluginConfig, SourcesConfig sourcesConfig, LyricsSourcesConfig lyricsSourcesConfig, SpotifyConfig spotifyConfig, AppleMusicConfig appleMusicConfig, DeezerConfig deezerConfig, YandexMusicConfig yandexMusicConfig, FloweryTTSConfig floweryTTSConfig, YouTubeConfig youTubeConfig, VkMusicConfig vkMusicConfig) {
+	public LavaSrcPlugin(LavaSrcConfig pluginConfig, SourcesConfig sourcesConfig, LyricsSourcesConfig lyricsSourcesConfig, SpotifyConfig spotifyConfig, AppleMusicConfig appleMusicConfig, DeezerConfig deezerConfig, YandexMusicConfig yandexMusicConfig, FloweryTTSConfig floweryTTSConfig, YouTubeConfig youTubeConfig, VkMusicConfig vkMusicConfig , QobuzConfig qobuzConfig) {
 		log.info("Loading LavaSrc plugin...");
 		this.sourcesConfig = sourcesConfig;
 		this.lyricsSourcesConfig = lyricsSourcesConfig;
@@ -120,6 +122,10 @@ public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchMan
 				vkMusic.setRecommendationsLoadLimit(vkMusicConfig.getRecommendationLoadLimit());
 			}
 		}
+
+		if (sourcesConfig.isQobuz()) {
+			this.qobuz = new QobuzAudioSourceManager(qobuzConfig.getUserOauthToken(), qobuzConfig.getAppId(), qobuzConfig.getAppSecret());
+		}
 	}
 
 	private boolean hasNewYoutubeSource() {
@@ -159,6 +165,12 @@ public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchMan
 			log.info("Registering Vk Music audio source manager...");
 			manager.registerSourceManager(this.vkMusic);
 		}
+
+
+		if (this.qobuz != null) {
+			log.info("Registering Qobuz audio source manager...");
+			manager.registerSourceManager(this.qobuz);
+		}
 		return manager;
 	}
 
@@ -188,6 +200,11 @@ public class LavaSrcPlugin implements AudioPlayerManagerConfiguration, SearchMan
 		if (this.vkMusic != null && this.sourcesConfig.isVkMusic()) {
 			log.info("Registering VK Music search manager...");
 			manager.registerSearchManager(this.vkMusic);
+		}
+
+		if (this.qobuz != null && this.sourcesConfig.isQobuz()) {
+			log.info("Registering Qobuz search manager...");
+			manager.registerSearchManager(this.qobuz);
 		}
 		return manager;
 	}

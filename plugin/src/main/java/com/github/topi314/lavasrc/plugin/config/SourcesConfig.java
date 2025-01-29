@@ -15,6 +15,7 @@ public class SourcesConfig {
 	private boolean floweryTTS = false;
 	private boolean youtube = false;
 	private boolean vkMusic = false;
+	private boolean qobuz = false;
 
 	public boolean isSpotify() {
 		return this.spotify;
@@ -70,5 +71,14 @@ public class SourcesConfig {
 
 	public void setVkMusic(boolean vkMusic) {
 		this.vkMusic = vkMusic;
+	}
+
+
+	public boolean isQobuz() {
+		return this.qobuz;
+	}
+
+	public void setQobuz(boolean qobuz) {
+		this.qobuz = qobuz;
 	}
 }
